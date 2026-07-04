@@ -1,99 +1,84 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
-import { NotificationContext } from '../context/NotificationContext';
-import * as firebaseTasks from '../services/firebaseTasks';
+import { useState, useEffect } from 'react';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  doc,
+  deleteDoc,
+  arrayUnion,
+} from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
+import { db } from '../services/firebaseConfig';
+import { useAuth } from '../context/AuthContext';
 
 export const useTasks = () => {
-  const { user } = useContext(AuthContext);
-  const { showError, showSuccess } = useContext(NotificationContext);
   const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchTasks = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const data = await firebaseTasks.getTasks(user.uid);
-      setTasks(data);
-    } catch (error) {
-      showError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, showError]);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+    if (!currentUser) return;
 
-  const addTask = useCallback(
-    async (taskData) => {
-      if (!user) return;
-      try {
-        const newTask = await firebaseTasks.createTask(user.uid, taskData);
-        setTasks([...tasks, newTask]);
-        showSuccess('Tarea creada exitosamente');
-        return newTask;
-      } catch (error) {
-        showError(error.message);
-        throw error;
-      }
-    },
-    [tasks, user, showError, showSuccess]
-  );
+    const tasksRef = collection(db, `users/${currentUser.uid}/tasks`);
 
-  const removeTask = useCallback(
-    async (taskId) => {
-      if (!user) return;
-      try {
-        await firebaseTasks.deleteTask(user.uid, taskId);
-        setTasks(tasks.filter(t => t.id !== taskId));
-        showSuccess('Tarea eliminada');
-      } catch (error) {
-        showError(error.message);
-        throw error;
-      }
-    },
-    [tasks, user, showError, showSuccess]
-  );
+    const unsubscribe = onSnapshot(tasksRef, (snapshot) => {
+      const tasksData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setTasks(tasksData);
+    });
 
-  const updateTaskData = useCallback(
-    async (taskId, updates) => {
-      if (!user) return;
-      try {
-        await firebaseTasks.updateTask(user.uid, taskId, updates);
-        setTasks(tasks.map(t => (t.id === taskId ? { ...t, ...updates } : t)));
-        showSuccess('Tarea actualizada');
-      } catch (error) {
-        showError(error.message);
-        throw error;
-      }
-    },
-    [tasks, user, showError, showSuccess]
-  );
+    return () => unsubscribe();
+  }, [currentUser]);
 
-  const archiveTaskLocal = useCallback(
-    async (taskId) => {
-      if (!user) return;
-      try {
-        await firebaseTasks.archiveTask(user.uid, taskId);
-        setTasks(tasks.map(t => (t.id === taskId ? { ...t, status: 'archived' } : t)));
-        showSuccess('Tarea archivada');
-      } catch (error) {
-        showError(error.message);
-        throw error;
-      }
-    },
-    [tasks, user, showError, showSuccess]
-  );
+  const addTask = async (task) => {
+    const tasksRef = collection(db, `users/${currentUser.uid}/tasks`);
+    await addDoc(tasksRef, {
+      uuid: uuidv4(),
+      title: task.title,
+      description: task.description || '',
+      estimatedTime: task.estimatedTime || 0,
+      timeSpent: 0,
+      status: 'pending',
+      archived: false,
+      attachments: [],
+      comments: [],
+      createdAt: new Date(),
+    });
+  };
+
+  const updateTask = async (taskId, updatedData) => {
+    const taskRef = doc(db, `users/${currentUser.uid}/tasks`, taskId);
+    await updateDoc(taskRef, updatedData);
+  };
+
+  const archiveTask = async (taskId) => {
+    const taskRef = doc(db, `users/${currentUser.uid}/tasks`, taskId);
+    await updateDoc(taskRef, { archived: true });
+  };
+
+  const deleteTask = async (taskId) => {
+    const taskRef = doc(db, `users/${currentUser.uid}/tasks`, taskId);
+    await deleteDoc(taskRef);
+  };
+
+  const addAttachment = async (taskId, fileUrl) => {
+    const taskRef = doc(db, `users/${currentUser.uid}/tasks`, taskId);
+    await updateDoc(taskRef, { attachments: arrayUnion(fileUrl) });
+  };
+
+  const addComment = async (taskId, text) => {
+    const taskRef = doc(db, `users/${currentUser.uid}/tasks`, taskId);
+    await updateDoc(taskRef, {
+      comments: arrayUnion({ text, date: new Date().toISOString() }),
+    });
+  };
 
   return {
     tasks,
-    loading,
     addTask,
-    removeTask,
-    updateTaskData,
-    archiveTaskLocal,
-    fetchTasks,
+    updateTask,
+    archiveTask,
+    deleteTask,
+    addAttachment,
+    addComment,
   };
 };

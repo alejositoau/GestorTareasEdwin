@@ -1,42 +1,27 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-export const useTimer = (initialTime = 0) => {
-  const [time, setTime] = useState(initialTime);
+export const useTimer = (initialSeconds = 0) => {
+  const [seconds, setSeconds] = useState(initialSeconds);
   const [isRunning, setIsRunning] = useState(false);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
-    if (!isRunning) return;
-
-    const interval = setInterval(() => {
-      setTime(prevTime => prevTime + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
+    if (isRunning) {
+      intervalRef.current = setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(intervalRef.current);
+    }
+    return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  const start = useCallback(() => {
-    setIsRunning(true);
-  }, []);
-
-  const pause = useCallback(() => {
+  const start = () => setIsRunning(true);
+  const pause = () => setIsRunning(false);
+  const reset = () => {
     setIsRunning(false);
-  }, []);
-
-  const reset = useCallback(() => {
-    setTime(initialTime);
-    setIsRunning(false);
-  }, [initialTime]);
-
-  const setCustomTime = useCallback((newTime) => {
-    setTime(newTime);
-  }, []);
-
-  return {
-    time,
-    isRunning,
-    start,
-    pause,
-    reset,
-    setCustomTime,
+    setSeconds(0);
   };
+
+  return { seconds, isRunning, start, pause, reset };
 };

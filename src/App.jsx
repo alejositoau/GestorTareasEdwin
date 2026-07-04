@@ -1,35 +1,28 @@
-// src/App.jsx
-import { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
-import { TaskProvider } from './context/TasksContext';
-import { ThemeProvider } from './context/ThemeContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { useAuth } from './hooks/useAuth';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import './index.css';
-
-const AppContent = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div>Cargando...</div>;
-  }
-
-  return user ? <DashboardPage /> : <LoginPage />;
-};
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { ResetPassword } from './pages/ResetPassword';
+import { Dashboard } from './pages/Dashboard';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <NotificationProvider>
-          <TaskProvider>
-            <AppContent />
-          </TaskProvider>
-        </NotificationProvider>
-      </ThemeProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
