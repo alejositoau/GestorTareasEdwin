@@ -1,0 +1,36 @@
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.spinner {
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+  width: 32px;
+  height: 32px;
+}
+
+.spinner-md {
+  width: 48px;
+  height: 48px;
+}
+
+.spinner-lg {
+  width: 64px;
+  height: 64px;
+}
+
+.spinner-message {
+  color: var(--gray-600);
+  font-size: var(--font-size-base);
+  margin: 0;
+}
